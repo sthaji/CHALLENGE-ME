@@ -15,7 +15,6 @@ def train():
     # import lasso regression
     # model = LogisticRegression(penalty='l1', solver='liblinear')
     # model = LogisticRegression(penalty='l2', solver='liblinear)
-    model = RandomForestClassifier()
     #model1 = XGBClassifier()
     #model2 = GradientBoostingClassifier()
     # model = SVC(kernel="poly", degree=2, coef0=1, C=5)
@@ -30,6 +29,7 @@ def train():
     df = pd.read_csv(dataset_path_Train, sep=',')
     df_eval = pd.read_csv(dataset_path_Evaluate, sep=',')
     print(df)
+
     ################ REPLACE MISSTYPES #############################
     print(df.columns)
     print(df['y'].value_counts())
@@ -78,6 +78,8 @@ def train():
     # Find unique values in column x12
     print(df['x12'].value_counts())
     df = df.drop('x12', axis=1)
+    df = df.drop('x5', axis=1)
+    df = df.drop('x1', axis=1)
     # df_eval = df_eval.drop('x12', axis=1)
     ###################### DROP X12 ###################################
 
@@ -86,38 +88,70 @@ def train():
     df['y'] = label_enc.fit_transform(df['y'])
     #print(df['y'].value_counts()) IF YOU WANT TO USE NUMERIC VALUES OF Y
     Y = df['y']
-    X = df.drop('y', axis=1).copy()
+    X = df.drop('y', axis=1)
     X = X.drop(X.columns[0], axis=1)
     # df_eval = df_eval.drop(df_eval.columns[0], axis=1)
     # print(df['y'].value_counts())
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42, stratify=Y) # add stratify = Y
 
-    # Step 1: PCA Dimensionality Reduction
-    n_pca_components = 12  # Choose the number of PCA components
-    pca = PCA(n_components=n_pca_components)
-    X_train_pca = pca.fit_transform(X_train)
-    X_test_pca = pca.transform(X_test)
+    # Split the dataset into training and testing sets
+    feature_names = X.columns
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42,  stratify=Y) # add stratify = Y
+    from sklearn.tree import DecisionTreeClassifier
+    import numpy as np
 
-    # Step 2: Subspace Method (Linear Discriminant Analysis - LDA)
-    n_lda_components = 2  # Choose the number of LDA components
-    lda = LinearDiscriminantAnalysis(n_components=n_lda_components)
-    X_train_lda = lda.fit_transform(X_train_pca, Y_train)
-    X_test_lda = lda.transform(X_test_pca)
+    # Create and fit your model (replace with your own model)
+    model = DecisionTreeClassifier()
 
-    # Step 3: Training a Classifier (Random Forest in this example)
-    classifier = RandomForestClassifier(random_state=42)
-    classifier.fit(X_train_lda, Y_train)
-    classifier2 = GradientBoostingClassifier()
-    classifier2.fit(X_train_lda, Y_train)
 
-    # Step 5: Model Evaluation
-    Y_pred = classifier.predict(X_test_lda)
-    accuracy = accuracy_score(Y_test, Y_pred)
-    print("Accuracy random:", accuracy)
 
-    Y_pred  = classifier2.predict(X_test_lda)
-    accuracy = accuracy_score(Y_test, Y_pred)
-    print("Accuracy gradient:", accuracy)
+
+    # model = RandomForestClassifier(n_estimators=100)  # For Random Forest
+
+    model.fit(X_train, Y_train)
+    print(model.score(X_test, Y_test))
+
+    # Get feature importances
+    importances = model.feature_importances_
+
+    # Sort the feature importances in descending order
+    indices = np.argsort(importances)[::-1]
+
+    # Print or visualize the most important features
+    for f in range(10):  # Print the top 10 features
+        print(f"{X.columns[indices[f]]}: {importances[indices[f]]}")
+
+
+
+    for feature in feature_names:
+        # Create a copy of the dataset without the current feature
+        X_subset = X.drop(columns=[feature])
+
+        # Split the subset into training and testing sets
+        X_train, X_test, Y_train, Y_test = train_test_split(X_subset, Y, test_size=0.2, random_state=42,
+                                                            stratify=Y)  # add stratify = Y
+
+        # Step 1: PCA Dimensionality Reduction
+        n_pca_components = 9  # Choose the number of PCA components
+        pca = PCA(n_components=n_pca_components)
+        X_train = pca.fit_transform(X_train)
+        X_test = pca.transform(X_test)
+
+        # Train the model on the subset
+        classifier = RandomForestClassifier(random_state=42)
+        classifier.fit(X_train, Y_train)
+        classifier2 = GradientBoostingClassifier()
+        classifier2.fit(X_train, Y_train)
+
+        # Evaluate the accuracy of the model on the subset
+        Y_pred = classifier.predict(X_test)
+        accuracy = accuracy_score(Y_test, Y_pred)
+        print(f"Accuracy random after removing '{feature}':", accuracy)
+
+        Y_pred = classifier2.predict(X_test)
+        accuracy = accuracy_score(Y_test, Y_pred)
+        print(f"Accuracy gradient after removing '{feature}':", accuracy)
+
+    ############## divide into training and test set################
 
 
 train()
