@@ -16,7 +16,7 @@ def train():
     # model = LogisticRegression(penalty='l1', solver='liblinear')
     # model = LogisticRegression(penalty='l2', solver='liblinear)
     #model1 = XGBClassifier()
-    #model2 = GradientBoostingClassifier()
+    modelGradient = GradientBoostingClassifier()
     # model = SVC(kernel="poly", degree=2, coef0=1, C=5)
     label_enc = LabelEncoder()
     # print(class_name)
@@ -43,7 +43,7 @@ def train():
     print(df['x7'].value_counts())
     # Google search for correct spelling
     df['x7'] = label_enc.fit_transform(df['x7'])
-    # df_eval['x7'] = label_enc.fit_transform(df_eval['x7'])
+    df_eval['x7'] = label_enc.fit_transform(df_eval['x7'])
     # print first 5 values of x7
     ################ REPLACE MISSTYPES #############################
 
@@ -131,13 +131,13 @@ def train():
                                                             stratify=Y)  # add stratify = Y
 
         # Step 1: PCA Dimensionality Reduction
-        n_pca_components = 9  # Choose the number of PCA components
+        n_pca_components = 10  # Choose the number of PCA components
         pca = PCA(n_components=n_pca_components)
         X_train = pca.fit_transform(X_train)
         X_test = pca.transform(X_test)
 
         # Train the model on the subset
-        classifier = RandomForestClassifier(random_state=42)
+        """classifier = RandomForestClassifier(random_state=42)
         classifier.fit(X_train, Y_train)
         classifier2 = GradientBoostingClassifier()
         classifier2.fit(X_train, Y_train)
@@ -149,7 +149,7 @@ def train():
 
         Y_pred = classifier2.predict(X_test)
         accuracy = accuracy_score(Y_test, Y_pred)
-        print(f"Accuracy gradient after removing '{feature}':", accuracy)
+        print(f"Accuracy gradient after removing '{feature}':", accuracy)"""
 
     ############## divide into training and test set################
 

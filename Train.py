@@ -4,7 +4,6 @@ import os
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 import random
-# from sentence_transformers import SentenceTransformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
@@ -18,23 +17,16 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import MinMaxScaler
 
 
-# model = SentenceTransformer('all-MiniLM-L6-v2')
-# model = SentenceTransformer('all-mpnet-base-v2')
-# model = SentenceTransformer('all-distilroberta-v1')
-# model = SentenceTransformer('average_word_embeddings_glove.6B.300d')
-# model = SentenceTransformer('all-MiniLM-L12-v2')
-
-# Sentence embeddings
 ########################## K CROSS ##########################################
 # Perform k-fold cross-validation and get accuracy scores for each fold
 def cross_val(model, X, Y, cv=5):
     accuracy_scores = cross_val_score(model, X, Y, cv=None, scoring='accuracy')
 
-    # Print the accuracy scores for each fold
+    # accuracy scores for each fold
     for fold, accuracy in enumerate(accuracy_scores):
         print(f"Fold {fold + 1}: Accuracy = {accuracy * 100:.2f}%")
 
-    # Calculate and print the mean and standard deviation of accuracy scores
+    # mean and standard deviation of accuracy scores
     mean_accuracy = accuracy_scores.mean()
     std_accuracy = accuracy_scores.std()
     print(f"Mean Accuracy = {mean_accuracy * 100:.2f}%")
@@ -43,8 +35,9 @@ def cross_val(model, X, Y, cv=5):
 
 
 
-def clean_data(df):
-    label_enc = LabelEncoder()
+def clean_data(df, df_eval):
+    label_encx = LabelEncoder() # for x7
+    label_ency = LabelEncoder() # for y
     ################ REPLACE MISSTYPES #############################
     print(df.columns)
     print(df['y'].value_counts())
@@ -56,13 +49,11 @@ def clean_data(df):
     df['x7'] = df['x7'].replace('Polkagriss', 'Polkagris')
     df['x7'] = df['x7'].replace('Schottisgriss', 'Schottisgris')
     print(df['x7'].value_counts())
-    # Google search for correct spelling
-    df['x7'] = label_enc.fit_transform(df['x7'])
-    # df_eval['x7'] = label_enc.fit_transform(df_eval['x7'])
-    # print first 5 values of x7
-    ################ REPLACE MISSTYPES #############################
+    df['x7'] = label_encx.fit_transform(df['x7'])
+    df_eval['x7'] = label_encx.transform(df_eval['x7'])
+    ################ REPLACE MISSTYPES #################################
 
-    ####################### CHECK FOR NULL #########################
+    ####################### CHECK FOR NULL ##############################
     print(df[df.isnull().sum(axis=1) > 1])  # check rows for more than one null value
     df = df[df.isnull().sum(axis=1) <= 1]
     print("second check")
@@ -70,22 +61,27 @@ def clean_data(df):
     print(df.isnull().sum(axis=0))
     ####################### CHECK FOR NULL #############################
 
+
     #######################turn into float##############################
     # Assuming 'df' is your DataFrame
     for column in df.columns:
         print(f"Column '{column}' has data type: {df[column].dtype}")
     df['x1'] = df['x1'].astype('float64')
+    df_eval['x1'] = df_eval['x1'].astype('float64')
     #######################turn into float##############################
 
-    # print max min values of x1
+    ##############print max min values of x1############################
     print(df['x1'].max())
     print(df['x1'].min())
     print(df['x1'].mean())
-    # delete row wheere x1 is max value
+    # delete row where x1 is max value
     df = df[df.x1 != df.x1.max()]
     print(df['x1'].mean())
+    ##############print max min values of x1############################
 
-    """ CHECK FOR OUTLIERS
+
+    ####################CHECK FOR OUTLIERS################################
+    """
     print("x2")
     print(df['x2'].max())
     print(df['x2'].min())
@@ -142,26 +138,42 @@ def clean_data(df):
     print(df['x13'].min())
     print(df['x13'].mean())
     """
+    ####################CHECK FOR OUTLIERS#################################
 
-    ###################### DROP X12 ###################################
-    # Find unique values in column x12
+
+    ###################### DROP COLUMNS ###################################
     print(df['x12'].value_counts())
     # drop column named Unnamed: 0
 
+
     print(df.columns)
     df = df.drop('x12', axis=1)
-    # df_eval = df_eval.drop('x12', axis=1)
-    ###################### DROP X12 ###################################
+    df_eval = df_eval.drop('x12', axis=1)
+    df = df.drop('x3', axis=1)
+    df_eval = df_eval.drop('x3', axis=1)
+    df = df.drop('x13', axis=1)
+    df_eval = df_eval.drop('x13', axis=1)
+    df = df.drop('x2', axis=1)
+    df_eval = df_eval.drop('x2', axis=1)
+    #df = df.drop('x9', axis=1)
+    #df = df.drop('x1', axis=1)
     df = df.drop(df.columns[0], axis=1)
-    df['y'] = label_enc.fit_transform(df['y'])
+    df_eval = df_eval.drop('Unnamed: 0', axis=1)
+    # print first 20 y values
+    print(df)
+    df['y'] = label_ency.fit_transform(df['y'])
+    print(df)
     print(df.head())
-    return df
+    print(df_eval.head())
+    ###################### DROP COLUMNS ###################################
+
+    return df, df_eval, label_ency
 
 def train():
     # import lasso regression
     # model = LogisticRegression(penalty='l1', solver='liblinear')
     # model = LogisticRegression(penalty='l2', solver='liblinear)
-    best_params_d = {
+    best_params_d1 = {
         'max_depth': None,
         'max_features': 'sqrt',
         'min_samples_leaf': 1,
@@ -169,6 +181,13 @@ def train():
         'n_estimators': 100
     }
 
+    best_params_d2 = {
+        'max_depth': None,
+        'max_features': 'sqrt',
+        'min_samples_leaf': 1,
+        'min_samples_split': 2,
+        'n_estimators': 300
+    }
 
     best_params = {
         'max_depth': 10,
@@ -185,6 +204,21 @@ def train():
         'min_samples_split': 5,
         'n_estimators': 200
     }
+
+    best_params3 = {'learning_rate': 0.1, 'max_depth': 3, 'min_samples_split': 10, 'n_estimators': 100,
+                      'subsample': 0.8}
+
+    best_params4 ={'learning_rate'
+    : 0.1,
+    'max_depth'
+    : 4,
+    'min_samples_split'
+    : 10,
+    'n_estimators'
+    : 100,
+    'subsample': 0.8
+    }
+
     best_paramsXboost = {
     'colsample_bytree': 0.8,
     'learning_rate': 0.2,
@@ -206,8 +240,9 @@ def train():
     }
 
 
-    model_randfore = RandomForestClassifier(random_state=42)
-    model_randforeGrid = RandomForestClassifier(**best_params_d)
+    model_randfore = RandomForestClassifier()
+    model_randforeGrid = RandomForestClassifier(**best_params_d1)
+    model_randforeGrid2 = RandomForestClassifier(**best_params_d2) ## This one is trained for the removed x3 and x13
     model_XGBC_Normal = XGBClassifier()
     model_XGBC = XGBClassifier(
         n_estimators=200,
@@ -221,14 +256,14 @@ def train():
     model_XGBC2 = XGBClassifier(**best_paramsXboost)
     model_XGBC3 = XGBClassifier(**best_paramsXboost2) ## for removed of x3 and x13
 
-
+    model_gradient = GradientBoostingClassifier()
     model_gradientBoost1 = GradientBoostingClassifier(**best_params)
     model_gradientBoost2 = GradientBoostingClassifier(**best_params2)
+    model_gradient3 = GradientBoostingClassifier(**best_params3) ## SELECT
+    model_gradient4 = GradientBoostingClassifier(**best_params4)
 
-    models = [model_randfore,model_randforeGrid, model_XGBC_Normal, model_XGBC, model_XGBC2, model_XGBC3, model_gradientBoost1, model_gradientBoost2]
+    models = [model_randfore, model_XGBC_Normal, model_XGBC, model_XGBC2, model_XGBC3, model_gradient, model_gradientBoost1, model_gradientBoost2, model_gradient3, model_gradient4]
 
-    # model = SVC(kernel="poly", degree=2, coef0=1, C=5)
-    # print(class_name)
 
     # Load the dataset
     # Get the parent directory path of the current script file
@@ -239,46 +274,53 @@ def train():
     df_eval = pd.read_csv(dataset_path_Evaluate, sep=',')
 
 
-    df = clean_data(df)
+    df, df_eval, label_encoder = clean_data(df,df_eval)
 
 
 
-    ############## divide into training and test set################
-    #
+
     print(df['y'].value_counts())
     Y = df['y']
     X = df.drop('y', axis=1)
-    #X = X.drop('x3', axis=1)
-    # X = X.drop('x13', axis=1)
     #scaler = MinMaxScaler()
+    print("X HEAD")
     print(X.head())
     #X = scaler.fit_transform(X.values)
-    n_pca_components = 12  # Choose the number of PCA components
+    n_pca_components = 9  # Choose the number of PCA components
     pca = PCA(n_components=n_pca_components)
     X = pca.fit_transform(X)
     # df_eval = df_eval.drop(df_eval.columns[0], axis=1)
     # print(df['y'].value_counts())
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.9, random_state=42, stratify=Y)
+    ############################# divide into training and test set########################################
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.8, random_state=42, stratify=Y)
+    ############################# divide into training and test set########################################
+
+
+
+    #############################Test accuracy for all models########################################
     for model in models:
-        model.fit(X_train, Y_train)
         model.fit(X_train, Y_train)
         accuracy = model.score(X_test, Y_test)
         print("\n")
         model_name = str(model).split("(")[0]  # Extract the model name
         print(model_name)
         print(f"your score is {accuracy * 100} % Babeh")
+    #############################Test accuracy for all models########################################
 
+
+
+    #############################k-fold cross validation########################################
+    for model in models:
+        model_name = str(model).split("(")[0]  # Extract the model name
+        print(model_name)
+        cross_val(model, X, Y, cv=5)
     #  model.score(X_test, Y_test)
+    #############################k-fold cross validation########################################
 
 
-      # Y_train is your original class labels
-    # (df_eval.shape)
-    # print(df_eval.columns)
-    # X_train = X
-    # Y_train = Y
-    # X_test = df_eval
 
-    ########################### GRID SEARCH ############################################
+    ########################### CODE FOR GRID SEARCH #################################################################
+
 
     ####################### DECISION TREES ##########################################
     param_gridD = {
@@ -294,7 +336,8 @@ def train():
         'n_estimators': [100, 200, 300],
         'learning_rate': [0.1, 0.01, 0.001],
         'max_depth': [3, 4, 5],
-        'subsample': [0.8, 0.9, 1.0]
+        'subsample': [0.8, 0.9, 1.0],
+        'min_samples_split': [2, 5, 10]
     }
 
     ####################### XGBClassifier ##########################################
@@ -308,13 +351,11 @@ def train():
         'reg_lambda': [0, 0.1, 0.5],  # You can adjust these values
     }
 
-
-
-
-
-
+    ########################### CODE FOR GRID SEARCH ###########################################################################
+    """
+    modelx = GradientBoostingClassifier()
     # Create a GridSearchCV object with cross-validation
-    """grid_search = GridSearchCV(estimator=model_XGBC_Normal, param_grid=param_gridX, cv=5, scoring='accuracy')
+    grid_search = GridSearchCV(estimator=modelx, param_grid=param_gridB, cv=5, scoring='accuracy')
 
     # Fit the grid search to your data
     grid_search.fit(X_train, Y_train)
@@ -329,38 +370,38 @@ def train():
 
     Y_pred = best_model.predict(X_test)
     accuracy = accuracy_score(Y_test, Y_pred)
-    print(f"Accuracy of best model of {model_XGBC}: {accuracy * 100:.2f}%")
+    print(f"Accuracy of best model of {model_randfore}: {accuracy * 100:.2f}%")
     """
-    ########################### GRID SEARCH ############################################
+    ########################### CODE FOR GRID SEARCH ###########################################################################
 
+
+
+
+    ############################# PICK AND EXTRACT data from chosen MODEL ########################################
     # i want the false positives and false negatives
-    y_pred = model_randfore.predict(X_test)
-    cm = confusion_matrix(Y_test, y_pred)
-    num_samples = len(Y_test)
-    num_classes = len(cm)  # Number of classes
 
-
-    for model in models:
-        model_name = str(model).split("(")[0]  # Extract the model name
-        print(model_name)
-        cross_val(model, X, Y, cv=5)
-
-"""
-    class_names = ["Atsutobob","Boborg", "Jorgsuto"]
-    for class_idx in range(num_classes):
-        tp = cm[class_idx, class_idx]
-        fp = sum(cm[i, class_idx] for i in range(num_classes) if i != class_idx)
-        fn = sum(cm[class_idx, i] for i in range(num_classes) if i != class_idx)
-
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
-        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
-
-        print(f"Class {class_names[class_idx]}:")
-        print(f"Precision: {precision:.2f}")
-        print(f"Recall: {recall:.2f}\n")
-
-    report = classification_report(Y_test, y_pred, target_names=["Atsutobob", "Boborg", "Jorgsuto"])
-    print(report)
-"""
+    model_final = GradientBoostingClassifier(**best_params3) 
+    model_randfore_final = GradientBoostingClassifier()
+    # print first 5 rows of X
+    print(Y.shape)
+    model_final.fit(X,Y)
+    # check that df_eval has the same columns as X
+    print(df_eval.columns)
+    df_eval = pca.transform(df_eval)
+    print(X.shape)
+    print(df_eval.shape)
+    labels = model_final.predict(df_eval)
+    ### comparing that he file has been translated correclty
+    with open('labelsNOTIT.txt', 'w') as f:
+        for item in labels:
+            f.write("%s\n" % item)
+    print(labels)
+    #transform labels to original labels
+    labels = label_encoder.inverse_transform(labels)
+    print(labels)
+    # save labels in a txt file
+    with open('Sams_predictions3.txt', 'w') as f:
+        for item in labels:
+            f.write("%s\n" % item)
 
 train()
